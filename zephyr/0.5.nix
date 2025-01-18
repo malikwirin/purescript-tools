@@ -1,54 +1,48 @@
-{ pkgs ? import <nixpkgs> { } }:
+{
+  stdenv,
+  fetchFromGitHub,
+  mkDerivation, aeson, ansi-terminal, ansi-wl-pprint, async, base
+, boxes, bytestring, containers, directory, filepath, formatting
+, Glob, hspec, hspec-core, HUnit, language-javascript, lib, mtl
+, optparse-applicative, process, purescript, QuickCheck, safe, text
+, transformers, unordered-containers, utf8-string
+}:
 
-pkgs.stdenv.mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "zephyr";
-
   version = "0.5.2";
 
-  src =
-    if pkgs.stdenv.hostPlatform.system == "x86_64-linux" then
-      (pkgs.fetchurl {
-        url = "https://github.com/MaybeJustJames/zephyr/releases/download/v${version}/Linux.tar.gz";
-        hash = "sha256-kHOaSqI5mS4OhfjbudQDtbtfsORrqDIf1SP/3rGL7pU=";
-      })
-    else if pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
-      (pkgs.fetchurl {
-        url = "https://github.com/MaybeJustJames/zephyr/releases/download/v${version}/macOS.tar.gz";
-        hash = "sha256-PXxBttMaQBn7x6aHzR7ONIDJMWdEiWyyzw/xkoUWyBs=";
-      })
-    else
-      throw "Architecture not supported";
-
-  nativeBuildInputs = [ ]
-    ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.fixDarwinDylibNames;
-
-  buildInputs = [
-    pkgs.stdenv.cc.cc.lib
-    pkgs.gmp
-    pkgs.zlib
-    pkgs.ncurses6
+  src = fetchFromGitHub {
+    owner = "MaybeJustJames";
+    repo = "zephyr";
+    rev = "v${version}";
+    hash = "sha256-IoaWpqs5Gs9l0u7fmm5pT+x54uWr0LpBGSzInclvZOg=";
+  };
+  isLibrary = true;
+  isExecutable = true;
+  libraryHaskellDepends = [
+    aeson ansi-terminal base boxes containers formatting
+    language-javascript mtl purescript safe text unordered-containers
   ];
+  executableHaskellDepends = [
+    aeson ansi-terminal ansi-wl-pprint async base bytestring containers
+    directory filepath formatting Glob language-javascript mtl
+    optparse-applicative purescript text transformers utf8-string
+  ];
+  testHaskellDepends = [
+    aeson base containers directory hspec hspec-core HUnit
+    language-javascript mtl optparse-applicative process purescript
+    QuickCheck text transformers
+  ];
+  testToolDepends = [ purescript ];
 
-  libPath = pkgs.lib.makeLibraryPath buildInputs;
-
-  dontStrip = true;
-
-  unpackPhase = ''
-    mkdir -p $out/bin
-    tar xf $src --strip 1 -C $out
-
-    ZEPHYR=$out/bin/zephyr
-    install -D -m555 -T $out/zephyr $ZEPHYR
-
-    chmod u+w $ZEPHYR
-  '' + pkgs.lib.optionalString (!pkgs.stdenv.isDarwin) ''
-    patchelf --interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" --set-rpath ${libPath} $ZEPHYR
-  '' + ''
-    chmod u-w $ZEPHYR
-
-    mkdir -p $out/etc/bash_completion.d/
-    $ZEPHYR --bash-completion-script $ZEPHYR > $out/etc/bash_completion.d/zephyr-completion.bash
-  '';
-
-  dontInstall = true;
+  meta = {
+    description = "Tree shaking breeze for PureScript CoreFn AST";
+    homepage = "https://github.com/MaybeJustJames/zephyr";
+    changelog = "https://github.com/MaybeJustJames/zephyr/blob/${src.rev}/ChangeLog.md";
+    license = lib.licenses.mpl20;
+    maintainers = with lib.maintainers; [ ];
+    mainProgram = "zephyr";
+    platforms = lib.platforms.all;
+  };
 }
